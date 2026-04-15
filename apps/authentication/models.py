@@ -44,6 +44,7 @@ class UserAccountManager(
         user.is_superuser = True
         user.is_staff = True
         user.is_active = True
+        user.role = 'admin'
         user.save(using=self._db)
 
         return user
@@ -52,6 +53,14 @@ class UserAccountManager(
 class UserAccount(
     AbstractBaseUser, PermissionsMixin
 ):  # Defines WHAT fields the user has and how they authenticate
+    
+    roles = (
+        ('admin', 'Admin'),
+        ('moderator', 'Moderator'),
+        ('editor', 'Editor'),
+        ('customer', 'Customer')
+    )
+    
     id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True)
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=100, unique=True)
@@ -62,6 +71,8 @@ class UserAccount(
     is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
+    role = models.CharField(max_length=30, choices=roles, default='customer')
+    verified = models.BooleanField(default=False)
     
     #Two factor authentication, OTP
     two_factor_enabled = models.BooleanField(default=False)
@@ -80,9 +91,11 @@ class UserAccount(
     REQUIRED_FIELDS = ["username", "first_name", "last_name"]
 
     def __str__(self):
-        return self.email
+        return self.username
 
     def get_qr_code(self):
         if self.qr_code and hasattr(self.qr_code, "url"):
             return self.qr_code.url
         return None
+    
+    

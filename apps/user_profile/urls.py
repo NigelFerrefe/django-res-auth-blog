@@ -1,5 +1,20 @@
 from django.urls import path
-from .views import MyUserProfileView
+from .views import (
+    DetailUserProfileView,
+    GetMyBannerPictureView,
+    GetMyProfilePictureView,
+    MyUserProfileView,
+    UpdateUserProfileView,
+    UploadBannerPictureView,
+    UploadProfilePictureView,
+)
+
 urlpatterns = [
-    path("my_profile/", MyUserProfileView.as_view(), name="my-profile-view")
+    path("my_profile/", MyUserProfileView.as_view(), name="my-profile-view"),
+    path("update/", UpdateUserProfileView.as_view()),
+    path("get/", DetailUserProfileView.as_view()),
+    path("get_picture/", GetMyProfilePictureView.as_view()),
+    path("get_banner_picture/", GetMyBannerPictureView.as_view()),
+    path("upload_profile_picture/", UploadProfilePictureView.as_view()),
+    path("upload_banner_picture/", UploadBannerPictureView.as_view()),
 ]

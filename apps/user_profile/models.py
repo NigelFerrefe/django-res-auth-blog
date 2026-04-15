@@ -4,6 +4,10 @@ from django.conf import settings
 from tinymce.models import HTMLField
 from djoser.signals import user_registered, user_activated
 from apps.media.models import Media
+from apps.media.serializers import MediaSerializer
+from django.utils.html import format_html
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 User = settings.AUTH_USER_MODEL
 
 
@@ -11,8 +15,8 @@ class UserProfile(models.Model):
     id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     bio = HTMLField(blank=True, null=True)
-    instagram = models.URLField(blank=True, null=True)
-    linkedin = models.URLField(blank=True, null=True)
+    instagram = models.URLField(blank=True, default='')
+    linkedin = models.URLField(blank=True, default='')
     birthday = models.DateField(blank=True, null=True)
     profile_picture = models.ForeignKey(
         Media,
@@ -28,12 +32,30 @@ class UserProfile(models.Model):
         blank=True,
         related_name="banner_picture"
     )
+    
+    def profile_picture_preview(self):
+        if self.profile_picture:
+            serializer = MediaSerializer(instance=self.profile_picture)
+            url = serializer.data.get('url')
+            if url:
+                return format_html('<img src="{}" style="width: 100px; height: auto;" />', url)
+        return 'No profile picture'
 
-#def post_user_registered(user, *args, **kwargs):
-#    print("user has registered")
+    def banner_picture_preview(self):
+        if self.banner_picture:
+            serializer = MediaSerializer(instance=self.banner_picture)
+            url = serializer.data.get('url')
+            if url:
+                return format_html('<img src="{}" style="width: 100px; height: auto;" />', url)
+        return 'No banner picture'
+
+    profile_picture.short_description = "Profile Picture Preview"
+    banner_picture.short_description = "Banner Picture Preview"
 
 
-def post_user_activated(user, *args, **kwargs):
+
+
+""" def post_user_activated(user, *args, **kwargs):
    profile = UserProfile.objects.create(user=user)
    profile_picture = Media.objects.create(
        order=1,
@@ -56,4 +78,30 @@ def post_user_activated(user, *args, **kwargs):
    profile.save()
 
 #user_registered.connect(post_user_registered)
-user_activated.connect(post_user_activated)
+user_activated.connect(post_user_activated) """
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    """
+    Crea un perfil de usuario automáticamente cuando se crea un usuario.
+    """
+    if created:
+        profile = UserProfile.objects.create(user=instance)
+        profile_picture = Media.objects.create(
+            order=1,
+            name="user-icon-placeholder.png",
+            size="21.7 KB",
+            type="png",
+            key="media/profiles/default/user-icon-placeholder.png",
+            media_type="image",
+        )
+        banner_picture = Media.objects.create(
+            order=1,
+            name="banner.png",
+            size="1.7 KB",
+            type="png",
+            key="media/profiles/default/banner.png",
+            media_type="image",
+        )
+        profile.profile_picture = profile_picture
+        profile.banner_picture = banner_picture
+        profile.save()

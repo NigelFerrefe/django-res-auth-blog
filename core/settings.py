@@ -21,30 +21,34 @@ VALID_API_KEYS = env.str("VALID_API_KEYS").split(",")
 DEBUG = True
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
+CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS")
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS")
 
-
+SITE_ID = 1
 # Application definition
 
 DJANGO_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
+    "django.contrib.sites",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
 ]
 
-PROJECT_APPS = ["apps.authentication", "apps.user_profile", "apps.media", "apps.blog"]
+PROJECT_APPS = ["apps.authentication", "apps.user_profile", "apps.media", "apps.blog", "apps.newsletter"]
 
 THIRD_PARTY_APPS = [
+    'corsheaders',
     "rest_framework",
     "channels",
     "djoser",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "tinymce",
-    'django_celery_results',
-    'django_celery_beat',
+    "django_celery_results",
+    "django_celery_beat",
     "storages",
     "axes",
 ]
@@ -52,9 +56,8 @@ THIRD_PARTY_APPS = [
 INSTALLED_APPS = DJANGO_APPS + PROJECT_APPS + THIRD_PARTY_APPS
 
 AXES_FAILURE_LIMIT = 3
-AXES_COOLOFF_TIME = lambda request:timedelta(minutes=1) # In PROD more value 
+AXES_COOLOFF_TIME = lambda request: timedelta(minutes=1)  # In PROD more value
 AXES_LOCK_OUT_AT_FAILURE = True
-
 
 
 MIDDLEWARE = [
@@ -96,7 +99,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "core.wsgi.application"
 ASGI_APPLICATION = "core.asgi.application"
-CSRF_TRUSTED_ORIGINS = ["http://localhost:8003"]
+
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
@@ -173,7 +176,6 @@ REST_FRAMEWORK = {
 }
 
 
-
 CHANNELS_ALLOWED_ORIGINS = "http://localhost:3000"
 
 
@@ -202,9 +204,9 @@ DJOSER = {
     "PASSWORD_CHANGED_EMAIL_CONFIRMATION": True,
     "SEND_CONFIRMATION_EMAIL": True,
     "SEND_ACTIVATION_EMAIL": True,
-    "PASSWORD_RESET_CONFIRM_URL": "email/password_reset_confirm/{uid}/{token}",
-    "USERNAME_RESET_CONFIRM_URL": "email/password_reset_confirm/{uid}/{token}",
-    "ACTIVATION_URL": "email/activate/{uid}/{token}",
+    "PASSWORD_RESET_CONFIRM_URL": "forgot-password-confirm/?uid={uid}&token={token}",
+    "USERNAME_RESET_CONFIRM_URL": "password_reset_confirm/?uid={uid}&token={token}",
+    "ACTIVATION_URL": "activate/?uid={uid}&token={token}",
     "SERIALIZERS": {
         "user_create": "apps.authentication.serializers.UserCreateSerializer",
         "user": "apps.authentication.serializers.UserSerializer",
@@ -223,19 +225,21 @@ DJOSER = {
 
 
 TINYMCE_DEFAULT_CONFIG = {
-    "height": 400,
-    "menubar": False,
-    "plugins": [
-        "advlist",
-        "autolink",
-        "lists",
-        "link",
-        "charmap",
-        "preview",
-        "searchreplace",
-        "wordcount",
-    ],
-    "toolbar": "undo redo | bold italic | bullist numlist | link",
+    "theme": "silver",
+    "height": 500,
+    "menubar": "file edit view insert format tools table help",
+    "plugins": (
+        "advlist autolink lists link image charmap preview anchor "
+        "searchreplace visualblocks code fullscreen insertdatetime "
+        "media table paste help wordcount"
+    ),
+    "toolbar": (
+        "undo redo | formatselect | "
+        "bold italic underline strikethrough | "
+        "alignleft aligncenter alignright alignjustify | "
+        "bullist numlist outdent indent | "
+        "link image | code | help"
+    ),
 }
 
 
@@ -258,29 +262,26 @@ CACHES = {
 
 CHANNELS_ALLOWED_ORIGINS = "http://localhost:3000"
 
-#CELERY WORKER
-CELERY_ACCEPT_CONTENT = ['json'] # Formatos de datos que acepta
-CELERY_TASK_SERIALIZER =  'json' # Como se envian las tareas a la cola
-CELERY_RESULT_SERIALIZER = 'json' # como se serializa el resultado de una tarea
-CELERY_TIMEZONE = "Europe/Madrid" 
+# CELERY WORKER
+CELERY_ACCEPT_CONTENT = ["json"]  # Formatos de datos que acepta
+CELERY_TASK_SERIALIZER = "json"  # Como se envian las tareas a la cola
+CELERY_RESULT_SERIALIZER = "json"  # como se serializa el resultado de una tarea
+CELERY_TIMEZONE = "Europe/Madrid"
 # Broker = cola de mensajes
-CELERY_BROKER_URL = env("REDIS_URL") # Sistema que gestiona la cola de tareas
+CELERY_BROKER_URL = env("REDIS_URL")  # Sistema que gestiona la cola de tareas
 # Conf del trasporte Redis
-CELERY_BROKER_TRANSPORT_OPTIONS ={
-    "visibility_timeout": 3600, # Si no termina de ejecutarla la tarea vuelve a la cola pasado este tiempo 1h
-    "socket_timeout": 5, # Timeout de conexion con Redis, si tarda mucho se corta la conexion
-    "retry_on_timeout": True # Si redis no responde a tiempo, intenta reconectar
-} 
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    "visibility_timeout": 3600,  # Si no termina de ejecutarla la tarea vuelve a la cola pasado este tiempo 1h
+    "socket_timeout": 5,  # Timeout de conexion con Redis, si tarda mucho se corta la conexion
+    "retry_on_timeout": True,  # Si redis no responde a tiempo, intenta reconectar
+}
 
-CELERY_RESULT_BACKEND = 'django-db' # Donde se guardan los resultados de las tareas
-CELERY_CACHE_BACKEND = 'default' # Sistema de cache, el de la confif de settings
-CELERY_IMPORTS = (
-    'core.tasks',
-    'apps.blog.tasks'
-)
+CELERY_RESULT_BACKEND = "django-db"  # Donde se guardan los resultados de las tareas
+CELERY_CACHE_BACKEND = "default"  # Sistema de cache, el de la confif de settings
+CELERY_IMPORTS = ("core.tasks", "apps.blog.tasks")
 
-#CELERY BEAT
-CELERY_BEAT_SCHEDULER ='django_celery_beat.schedulers:DatabaseScheduler'
+# CELERY BEAT
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 CELERY_BEAT_SCHEDULE = {}
 
 # AWS

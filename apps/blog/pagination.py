@@ -3,7 +3,7 @@ from rest_framework.response import Response
 import math
 
 class Pagination(PageNumberPagination):
-    page_size = 10
+    page_size = 12
     page_query_param = 'p'
     
     def get_paginated_response(self, data):

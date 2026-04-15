@@ -21,9 +21,9 @@ class MediaSerializer(serializers.ModelSerializer):
         bucket = client.bucket(settings.GS_BUCKET_NAME)
         blob = bucket.blob(obj.key)
         
-        # URL firmada que expira en 60 segundos
+        
         signed_url = blob.generate_signed_url(
-            expiration=datetime.timedelta(seconds=60),
+            expiration=datetime.timedelta(minutes=15),
             method="GET",
             version="v4"
         )
